@@ -76,8 +76,8 @@ requirements.txt
 ### Installation
 
 ```bash
-git clone <repository-url>
-cd <project-root>
+git clone git@github.com:zspirit/user_registration.git
+cd user_registration
 pip install -r requirements.txt
 ```
 
