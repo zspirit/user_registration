@@ -84,7 +84,7 @@ pip install -r requirements.txt
 ### Run the Application
 
 ```bash
-uvicorn main:app --reload
+uvicorn app.main:app --reload
 ```
 using docker 
 ```bash
