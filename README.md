@@ -88,7 +88,7 @@ uvicorn main:app --reload
 ```
 using docker 
 ```bash
-docker-compose up --build --no-cache
+docker-compose up --build
 ```
 
 The API will be available at `http://127.0.0.1:8000`.
