@@ -93,7 +93,7 @@ docker-compose up --build --no-cache
 
 The API will be available at `http://127.0.0.1:8000`.
 
-# This project leverages AI assistance for
+## This project leverages AI assistance for
 
 * Generating this `README.md` file and files structure.
 * Helping to write and adapt tests, especially for mocking database connections.
