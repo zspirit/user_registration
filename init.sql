@@ -1,10 +1,10 @@
 -- Create tables for your app
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
-    email VARCHAR(255) UNIQUE NOT NULL,
+    email VARCHAR(254) UNIQUE NOT NULL,
     firstname VARCHAR(128) NOT NULL,
     lastname VARCHAR(128) NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(128) NOT NULL,
     is_active BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS activations (
     id SERIAL PRIMARY KEY,
     user_id INT REFERENCES users(id) ON DELETE CASCADE,
-    email VARCHAR(255) UNIQUE NOT NULL,
+    email VARCHAR(254) UNIQUE NOT NULL,
     code VARCHAR(10) NOT NULL,
     expires_at TIMESTAMP NOT NULL,
     purpose VARCHAR(50) NOT NULL,

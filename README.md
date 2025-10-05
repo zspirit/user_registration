@@ -89,16 +89,18 @@ uvicorn app.main:app --reload
 using docker 
 ```bash
 docker-compose build --no-cache
+docker-compose run --rm test
 docker-compose up
 ```
 
 The API will be available at `http://127.0.0.1:8000`.
 docs are available at `http://localhost:8000/docs`
+test report is avaible at `http://localhost:8000/report/report.html`
 
 ## This project leverages AI assistance for
 
 * Generating this `README.md` file and files structure.
-* Helping to write and adapt tests, especially for mocking database connections.
+* Helping to write and adapt tests
 * Adapting code to pass specific tests efficiently.
 
 ## Future Improvements
@@ -109,4 +111,5 @@ docs are available at `http://localhost:8000/docs`
   * Reset password
   * Update user data
   * Forgot password flow
-  * Enhance testing strategies, especially for integration and end-to-end tests.
+  * Expose a User CRUD 
+  * Deploy containers in a cloud like AWS EC2, DigitalOcean...

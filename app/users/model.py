@@ -1,12 +1,12 @@
 from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime, timezone
-from typing import ClassVar
+from typing import ClassVar, Optional
 
 
 class User(BaseModel):
     table_name: ClassVar[str] = "users"
 
-    id: int
+    id: Optional[int] = None
     email: EmailStr
     firstname: str = Field(min_length=2, max_length=128)
     lastname: str = Field(min_length=2, max_length=128)

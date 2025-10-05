@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 import asyncpg
 from app.auth.router import router as auth_router
 from app.users.router import router as users_router
@@ -22,6 +23,7 @@ async def lifespan(app: FastAPI):
     await app.state.db.close()
     print("PostgreSQL connection closed")
 
+
 app = FastAPI(
     title="User registration API",
     description="User registration Management System with Authentication",
@@ -41,6 +43,9 @@ app.add_middleware(
 # Include routers
 app.include_router(auth_router)
 app.include_router(users_router)
+
+# Serve static pytest report
+app.mount("/report", StaticFiles(directory=".", html=True), name="report")
 
 @app.get("/")
 async def root():

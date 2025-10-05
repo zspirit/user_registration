@@ -6,6 +6,8 @@ from app.auth.repository import OTPRepository
 from app.auth.utils import create_access_token, create_refresh_token, generate_one_time_password, hash_password, send_email_one_time_password, verify_password, verify_token
 from app.users.model import User
 from app.users.repository import UserRepository
+from app.config import logger
+
 
 class AuthService:
     def __init__(self):
@@ -18,6 +20,7 @@ class AuthService:
 
     def register(self, register_data: RegisterForm) -> RegisterForm:
         """Register a new user and send OTP for verification."""
+        logger.info("Starting data processing...")
         existing_user = self.users_repo.get_by_email(register_data.email)
         if existing_user:
             raise UserAlreadyExistsException()
@@ -32,7 +35,7 @@ class AuthService:
             is_active=False,
         )
         
-        created_user = self.users_repo.add(new_user) # returns user ID or None
+        created_user = self.users_repo.insert(new_user) # returns user ID or None
         if not created_user:
             raise UserAlreadyExistsException()
         
@@ -45,7 +48,7 @@ class AuthService:
             expires_at=datetime.now(timezone.utc) + timedelta(minutes=10),  # Set token expiry to 10 minutes
         )
         
-        self.activation_code_repo.add(otp)
+        self.activation_code_repo.insert(otp)
 
         send_email_one_time_password(register_data.email, otp)
         
@@ -58,39 +61,58 @@ class AuthService:
         if not otp_record:
             raise InvalidOTPException()
         
-        expires_at = otp_record['expires_at'].replace(tzinfo=timezone.utc)
+        # Access as dict
+        expires_at = otp_record['expires_at']
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
 
-        # Check expiration
+        # Expiration check
         if expires_at < datetime.now(timezone.utc):
-            raise OTPExpiredException()  # Only for expired OTPs
+            raise OTPExpiredException()
 
-        # Check code mismatch
+        # OTP match check
         if str(otp_record['code']) != str(otp):
-            raise InvalidOTPException()  # Only for wrong OTP
+            raise InvalidOTPException()
 
+        # Fetch user
         user = self.users_repo.get_by_id(otp_record['user_id'])
         if not user:
             raise UserNotFoundException()
 
+        # Delete OTP
         self.activation_code_repo.delete_by_email_and_purpose(user['email'], "registration")
-        self.users_repo.update_user(user_id=user['id'], update_data={"is_active": True,})
 
-        access_token = create_access_token(data={"sub": user['id'], "email": user['email']})
-        refresh_token = create_refresh_token(data={"sub": user['id'], "email": user['email']})
+        # Update user is_active
+        updated_user = self.users_repo.update_user(
+            user_id=user['id'],
+            update_data={"is_active": True},
+            allow_is_active=True
+        )
+
+        if not updated_user:
+            raise Exception("Failed to activate user")  # safety check
+
+        # Generate tokens
+        access_token = create_access_token(data={"sub": str(updated_user.id), "email": updated_user.email})
+        refresh_token = create_refresh_token(data={"sub": str(updated_user.id), "email": updated_user.email})
 
         return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+
+
+
     
     def login(self, login_data: LoginForm) -> TokenResponse:
         """Authenticate user and return tokens."""
         user = self.users_repo.get_by_email(login_data.email)
 
-        if not user or not verify_password(login_data.password, user['password_hash']):
+        if not user or not verify_password(login_data.password, user.password_hash):
             raise InvalidCredentialsException()
 
-        access_token = create_access_token(data={"sub": str(user['id']), "email": user['email']})
-        refresh_token = create_refresh_token(data={"sub": str(user['id']), "email": user['email']})
+        access_token = create_access_token(data={"sub": str(user.id), "email": user.email})
+        refresh_token = create_refresh_token(data={"sub": str(user.id), "email": user.email})
 
         return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+
     
     def refresh_token(self, refresh_token: str) -> TokenResponse:
         """Refresh access token using refresh token."""

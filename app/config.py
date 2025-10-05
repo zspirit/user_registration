@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
 import os
+import logging
 
 # Load environment variables from .env
 load_dotenv()
@@ -22,3 +23,22 @@ SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-here")  # Change this in p
 ALGORITHM =  os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30) 
 REFRESH_TOKEN_EXPIRE_DAYS = os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", 7)
+
+
+# Logger Configuration
+logger = logging.getLogger("service_logger")
+logger.setLevel(logging.INFO)  # Change to DEBUG for more details
+
+# Create console handler
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+
+# Define log format
+formatter = logging.Formatter(
+    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+console_handler.setFormatter(formatter)
+
+# Avoid duplicate handlers if re-imported
+if not logger.handlers:
+    logger.addHandler(console_handler)

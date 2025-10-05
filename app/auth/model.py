@@ -5,7 +5,7 @@ from typing import Optional, ClassVar
 class OTP(BaseModel):
     table_name: ClassVar[str] = "activations"
     
-    id: int
+    id: Optional[int] = None
     user_id: str
     email: EmailStr
     purpose: str

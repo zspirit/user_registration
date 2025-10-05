@@ -1,86 +1,117 @@
 from typing import List, Optional, TypeVar, Generic, Dict, Any
-import psycopg2
-from psycopg2.extras import RealDictCursor
 from pydantic import BaseModel
-from app.config import DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
 from datetime import datetime, timezone
+from app.config import logger
 
 T = TypeVar("T")
 
+# Database
 class Database:
     def __init__(self):
-        self.conn = None  # don't connect yet
+        self.conn = None
 
     def connect(self):
         if self.conn is None:
-            self.conn = psycopg2.connect(
-                host=DB_HOST,
-                port=DB_PORT,
-                database=DB_NAME,
-                user=DB_USER,
-                password=DB_PASSWORD
-            )
-            self.conn.autocommit = True
+            try:
+                import psycopg2
+                from psycopg2.extras import RealDictCursor
+                from app.config import DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
+
+                self.conn = psycopg2.connect(
+                    host=DB_HOST,
+                    port=DB_PORT,
+                    database=DB_NAME,
+                    user=DB_USER,
+                    password=DB_PASSWORD
+                )
+                self.conn.autocommit = True
+                logger.info("Database connection established.")
+            except Exception as e:
+                logger.error(f"Failed to connect to DB: {e}")
+                raise
         return self.conn
 
-    def execute(self, query: str, params=None, fetch=False):
-        conn = self.connect() 
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(query, params)
-            if fetch:
-                return cur.fetchall()
-            return None
+    def execute(self, query: str):
+        conn = self.connect()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(query)
+                logger.debug(f"Executed query: {query}")
+        except Exception as e:
+            logger.error(f"DB Error executing query: {query} | Error: {e}")
+            raise
+
+    def fetchAll(self, query: str) -> List[Dict]:
+        conn = self.connect()
+        try:
+            from psycopg2.extras import RealDictCursor
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(query)
+                results = cur.fetchall()
+                logger.debug(f"Executed query: {query} | Fetched all: {results}")
+                return results
+        except Exception as e:
+            logger.error(f"DB Error executing query: {query} | Error: {e}")
+            raise
+
+    def fetchOne(self, query: str) -> Optional[Dict]:
+        conn = self.connect()
+        try:
+            from psycopg2.extras import RealDictCursor
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(query)
+                result = cur.fetchone()
+                logger.debug(f"Executed query: {query} | Fetched one: {result}")
+                return result
+        except Exception as e:
+            logger.error(f"DB Error executing query: {query} | Error: {e}")
+            raise
 
 db = Database()
 
-
+# Base Repository
 class BaseRepository(Generic[T]):
     def __init__(self, table_name: str):
         self.table_name = table_name
 
     def get_all(self) -> List[T]:
-        """Get all entities."""
         query = f"SELECT * FROM {self.table_name}"
-        return db.execute(query, fetch=True)
+        logger.info(f"Fetching all rows from {self.table_name}")
+        results = db.fetchAll(query)
+        return results if results else []
 
     def get_by_id(self, entity_id) -> Optional[T]:
-        """Get entity by ID."""
-        query = f"SELECT * FROM {self.table_name} WHERE id=%s"
-        results = db.execute(query, (entity_id,), fetch=True)
-        return results[0] if results else None
+        query = f"SELECT * FROM {self.table_name} WHERE id={entity_id}"
+        logger.info(f"Fetching from {self.table_name} where id={entity_id}")
+        return db.fetchOne(query)
 
-    def add(self, data: BaseModel) -> int:
-        """Insert a new entity. Returns new id (Postgres)."""
-        # Safely dump model → dict
-        data = data.model_dump(exclude_unset=True, exclude_none=True)
+    def insert(self, data: BaseModel) -> int:
+        data_dict = data.model_dump(exclude_unset=True, exclude_none=True)
+        data_dict.setdefault("created_at", datetime.now(timezone.utc))
 
-        # Ensure created_at exists
-        data.setdefault("created_at", datetime.now(timezone.utc))
+        keys = ", ".join(data_dict.keys())
+        values = ", ".join([f"'{v}'" if not isinstance(v, (int, float)) else str(v) for v in data_dict.values()])
 
-        keys = ", ".join(data.keys())
-        placeholders = ", ".join(["%s"] * len(data))
-        values = tuple(data.values())
-
-        query = f"INSERT INTO {self.table_name} ({keys}) VALUES ({placeholders}) RETURNING id"
-        result = db.execute(query, values, fetch=True)
-        return result[0]["id"]
-
+        query = f"INSERT INTO {self.table_name} ({keys}) VALUES ({values}) RETURNING id"
+        logger.info(f"Inserting into {self.table_name}")
+        result = db.fetchOne(query)
+        new_id = result["id"]
+        logger.info(f"Inserted new row with id={new_id}")
+        return new_id
 
     def update(self, entity_id, data: Dict[str, Any]):
-        """Update an entity by ID."""
-        set_clause = ", ".join([f"{k}=%s" for k in data.keys()])
-        values = tuple(data.values()) + (entity_id,)
-        query = f"UPDATE {self.table_name} SET {set_clause} WHERE id=%s"
-        db.execute(query, values)
+        set_clause = ", ".join([f"{k}='{v}'" if not isinstance(v, (int, float)) else f"{k}={v}" for k, v in data.items()])
+        query = f"UPDATE {self.table_name} SET {set_clause} WHERE id={entity_id}"
+        logger.info(f"Updating {self.table_name} id={entity_id}")
+        db.execute(query)
 
     def delete_by_id(self, entity_id):
-        """Delete an entity by ID."""
-        query = f"DELETE FROM {self.table_name} WHERE id=%s"
-        db.execute(query, (entity_id,))
+        query = f"DELETE FROM {self.table_name} WHERE id={entity_id}"
+        logger.info(f"Deleting from {self.table_name} id={entity_id}")
+        db.execute(query)
 
     def delete(self, conditions: Dict[str, Any]):
-        """Delete entities matching conditions."""
-        where_clause = " AND ".join([f"{k}=%s" for k in conditions.keys()])
-        values = tuple(conditions.values())
+        where_clause = " AND ".join([f"{k}='{v}'" if not isinstance(v, (int, float)) else f"{k}={v}" for k, v in conditions.items()])
         query = f"DELETE FROM {self.table_name} WHERE {where_clause}"
-        db.execute(query, values)
+        logger.info(f"Deleting from {self.table_name} where {conditions}")
+        db.execute(query)

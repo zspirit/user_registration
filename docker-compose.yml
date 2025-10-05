@@ -19,3 +19,15 @@ services:
       - "8000:8000"
     volumes:
       - .:/app
+
+  test:
+    build: .
+    container_name: fastapi_tests
+    depends_on:
+      - db
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    command: >
+      sh -c "pytest ./app/tests -v --html=report.html --self-contained-html"
