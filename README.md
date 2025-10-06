@@ -106,7 +106,8 @@ test report is avaible at `http://localhost:8000/report/report.html`
 
 * Integrate a full ORM such as **SQLAlchemy** or **SQLModel** for more robust database management.
 * Add endpoints for user actions such as:
-
+  
+  * Add logout endpoint
   * Reset password
   * Update user data
   * Forgot password flow
