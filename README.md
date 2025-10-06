@@ -101,7 +101,6 @@ test report is avaible at `http://localhost:8000/report/report.html`
 
 * Generating this `README.md` file and files structure.
 * Helping to write and adapt tests
-* Adapting code to pass specific tests efficiently.
 
 ## Future Improvements
 
