@@ -113,3 +113,9 @@ test report is avaible at `http://localhost:8000/report/report.html`
   * Forgot password flow
   * Expose a User CRUD 
   * Deploy containers in a cloud like AWS EC2, DigitalOcean...
+
+## Installation
+
+```bash
+pip install -r requirements.txt
+```
